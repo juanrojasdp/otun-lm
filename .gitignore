@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (only download scripts are tracked)
+data/*
+!data/.gitkeep
+!data/*.py
+!data/*.sh
+
+# Model artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+checkpoints/
+
+# Experiment tracking
+wandb/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Secrets
+.env

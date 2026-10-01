@@ -1,0 +1,13 @@
+# Core
+torch
+numpy
+
+# Exploration and plotting
+jupyterlab
+matplotlib
+graphviz  # visualize micrograd computation graphs (also needs the Graphviz system binary)
+
+# Added later in Phase 1:
+# tiktoken      (week 5: compare against GPT-2 tokenizer)
+# datasets      (week 6: Wikipedia / FineWeb-2)
+# wandb         (week 6: experiment tracking)
