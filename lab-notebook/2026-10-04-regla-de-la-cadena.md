@@ -69,7 +69,7 @@ Además, el orden importa: antes de calcular el gradient de un nodo hay que term
 ## Qué no entendí
 
 - Nada bloqueante. Patrón a vigilar: errores al distribuir en álgebra (pierdo el factor que multiplica al último término). Mitigación: trabajar con números y usar fórmulas solo para entender.
-- Pendiente: la derivada de `tanh`, que aparece en el video.
+- Pendiente: la derivada de `tanh`, que aparece en el video justo después del minuto 50 (ejemplo de la neurona).
 
 ## Conclusiones
 
