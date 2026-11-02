@@ -2,7 +2,7 @@
 
 ## Fecha
 
-2026-10-27 → 2026-11-02 — Semana 1, sesión 4 (en progreso: falta el experimento de learning rate)
+2026-10-27 → 2026-11-02 — Semana 1, sesión 4
 
 ## Hipótesis / Objetivo
 
@@ -91,6 +91,51 @@ Experimento lateral, con hipótesis: si dos neuronas empiezan con los mismos pes
 - Solo hay que reiniciar los grads de los **parámetros**: los nodos intermedios se crean nuevos en cada forward.
 - Mi autograd entrenó una red real: el ciclo zero_grad → forward → backward → update es el mismo que se usa para entrenar un GPT. Ojo: con 4 ejemplos la red memorizó; sin datos de validación no sé si generaliza (overfitting, semana 2).
 
+## Experimento: learning rate sweep
+
+### Hipótesis
+
+Con `lr` muy pequeño (0.001) el loss baja demasiado lento en 100 pasos; con `lr` muy grande (1.0) el loss puede llegar a subir después de algunos pasos; existe un `lr` óptimo intermedio, alrededor de 0.01–0.05.
+
+### Diseño
+
+- `train(lr, steps, seed, xs, ys)`: fija `random.seed(seed)` antes de crear `MLP(3, [4, 4, 1])`, entrena y devuelve `losses` y el `mlp`.
+- **Métrica:** loss final después de 100 pasos, o sea un presupuesto fijo de cómputo (así se razona también a gran escala: la mejor configuración dentro de un presupuesto dado).
+- **Misma semilla para todos los `lr`** → comparación justa (mismos pesos iniciales). **Varias semillas** → comprobar que el resultado no dependa de la inicialización.
+- Verificación de la semilla: dos corridas con `seed=42` dieron `a == b → False`, pero con una diferencia máxima de **8.9e-16**. Causa: `_prev` es un `set`, cuyo orden depende de las direcciones de memoria; cambia el orden de los `_backward` y la suma en punto flotante no es exactamente asociativa. No afecta las conclusiones; los floats se comparan con tolerancia (`math.isclose`).
+
+### Resultados
+
+Loss final después de 100 pasos (💀 = la red quedó saturada / atascada):
+
+| seed | 0.001 | 0.01 | 0.05 | 0.1 | 0.2 | 0.3 | 0.5 | 1.0 |
+|---|---|---|---|---|---|---|---|---|
+| 42 | 1.59 | 0.087 | 0.012 | 0.0049 | 0.0019 | 0.0011 | 8.00 💀 | 8.00 💀 |
+| 15 | 2.10 | 0.055 | 0.010 | 0.0049 | 0.0020 | 0.0051 | 0.0003 | 4.00 💀 |
+| 7 | 2.16 | 0.050 | 0.0065 | 0.0029 | 0.0005 | 7.999 💀 | 0.0003 | 0.0002 |
+| 123 | 2.46 | 0.091 | 0.0096 | 0.0038 | 0.0004 | 0.0009 | 8.00 💀 | 8.00 💀 |
+
+(Yo corrí las semillas 42 y 15; las columnas 0.2 y 0.3 y las semillas 7 y 123 las corrió Claude con la misma función `train`.)
+
+- Con `seed=42`, en 0.5 y 1.0 el loss **saltó de 5.23 a ~8.0 en el primer paso** y quedó plano: predicciones constantes (+1 con 0.5, −1 con 1.0). En la gráfica en escala log el salto casi no se ve y parecía "constante desde el inicio".
+- `seed=15`, `lr = 1.0`: el loss bajó, se quedó en **4.0** exacto, con predicciones `[+1, −1, +1, +1]` contra `[+1, −1, −1, +1]`: un ejemplo saturado en el signo contrario, `(1 − (−1))² = 4`, sin gradient para corregirlo.
+- Hasta 0.2: resultado estable en las 4 semillas, cada `lr` más grande es mejor. Desde 0.3: lotería; el mismo `lr` da el mejor loss de la tabla o mata la red según la semilla.
+
+### Conclusiones (con mis palabras)
+
+> Se confirmó que los `lr` demasiado pequeños hacen que el loss decrezca demasiado lento y van a exigir mucho cómputo porque exigen muchos pasos. Sí puede ser cierto que los mejores `lr` sean puntos intermedios, pero toca encontrarlos: toca ensayar con muchos seeds y distintos valores de `lr` para encontrar el valor más alto posible que no falle.
+>
+> Si tuviera que entrenar una sola vez, elegiría 0.2: con los datos que tenemos, es el que más minimiza el loss sin romper la red con los seeds ensayados. Tal vez ensayaría con más seeds, pero con esta tabla me iría con 0.2.
+
+Contra la hipótesis:
+- **`lr` pequeño lento:** ✓ confirmado.
+- **`lr` grande hace subir el loss:** ✓ confirmado, pero el mecanismo fue un salto inmediato que **satura `tanh` y mata la red** (gradient ≈ 0), no una subida gradual.
+- **Óptimo en 0.01–0.05:** ✗ refutado; el rango confiable fue 0.1–0.2.
+
+Aprendizajes:
+- Con una sola semilla habría concluido "0.5 mata la red" (seed 42) o "0.5 es el mejor" (seed 15); las dos conclusiones eran incorrectas.
+- Mejor `lr` posible ≠ mejor `lr` **confiable**. En un entrenamiento real solo hay un intento, así que conviene el `lr` más alto que sea estable. El óptimo suele estar cerca del borde de la inestabilidad (0.2 funciona, 0.3 ya falla una vez), y por eso en los labs se usan técnicas como el *warmup*.
+
 ## Siguiente paso
 
-Experimento de learning rate. **Hipótesis:** con `lr` muy pequeño (0.001) el loss baja demasiado lento en 100 pasos; con `lr` muy grande (1.0) el loss puede llegar a subir después de algunos pasos; existe un `lr` óptimo intermedio, alrededor de 0.01–0.05. Probar `0.001, 0.01, 0.05, 0.1, 0.5, 1.0` y comparar las curvas del loss.
+Cerrar la semana 1 con el resumen de lo aprendido. Semana 2: makemore (bigram + MLP) con nombres de municipios y apellidos colombianos, con split train/validation para medir overfitting.
